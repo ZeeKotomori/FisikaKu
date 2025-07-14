@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  A // Admin
+  U // User
+  SP // Super Admin
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  role          Role      @default(U)
+  createdAt     DateTime  @default(now())
+  hashedPassword String?
+
+  materials Material[] @relation("UserMaterials")
+  quiziz    Quiziz[]
+  catatan   Catatan[]
+  accounts  Account[]
+  sessions  Session[]
+}
+
+model Material {
+  id        String   @id @default(cuid())
+  title     String
+  link      String? // link media (opsional)
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  creator   User   @relation("UserMaterials", fields: [creatorId], references: [id])
+  creatorId String
+
+  detail  DetailMateri?
+  catatan Catatan[]
+}
+
+model DetailMateri {
+  id      String  @id @default(cuid())
+  content String // deskripsi lengkap
+  media   String? // optional media (gambar/video tambahan)
+
+  material   Material @relation(fields: [materialId], references: [id])
+  materialId String   @unique
+}
+
+model Catatan {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  material   Material @relation(fields: [materialId], references: [id])
+  materialId String
+
+  note      String? // bisa buat catatan sendiri juga
+  createdAt DateTime @default(now())
+
+  @@unique([userId, materialId])
+}
+
+model Quiziz {
+  id        String   @id @default(cuid())
+  title     String
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  creator   User   @relation(fields: [creatorId], references: [id])
+  creatorId String
+
+  questions Question[]
+}
+
+model Question {
+  id    String  @id @default(cuid())
+  text  String
+  image String? // opsional, misal soal pakai gambar
+
+  optionA String
+  optionB String
+  optionC String
+  optionD String
+  answer  String // jawaban benar (A/B/C/D)
+
+  quiziz   Quiziz @relation(fields: [quizizId], references: [id])
+  quizizId String
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
